@@ -14,6 +14,8 @@
 
 "use strict";
 
+var running = {};
+
 /**
  * API Extension Runner Service
  * @class ApiExtensionRunner
@@ -27,6 +29,18 @@ function ApiExtensionRunner() {
  * @param {String} name - The name of the extension according to its package.json file
  */
 ApiExtensionRunner.prototype.start = function(name, extension_root) {
+    let fork = require('child_process').fork;
+    let options = {
+        cwd: extension_root + name,
+        stdio: [ 'ignore', 'ignore', 'ignore', 'ipc']
+    };
+
+    // Start node
+    running[name] = fork('.', [], options, (err, stdout, stderr) => {
+        if (err) {
+            console.log(stdout);
+        }
+    });
 }
 
 /**
@@ -35,8 +49,21 @@ ApiExtensionRunner.prototype.start = function(name, extension_root) {
  * @param {String} name - The name of the extension according to its package.json file
  */
 ApiExtensionRunner.prototype.stop = function(name) {
+    let node = running[name];
+
+    if (node) {
+        node.kill();
+    }
+    delete running[name];
 }
 
+/**
+ * Restarts an extension identified by name
+ *
+ * @param {String} name - The name of the extension according to its package.json file
+ */
+ApiExtensionRunner.prototype.restart = function(name) {
+}
 
 /**
  * Returns the status of an extension identified by name
@@ -45,6 +72,7 @@ ApiExtensionRunner.prototype.stop = function(name) {
  * @returns {('stopped'|'running')} - The current status of the extension
  */
 ApiExtensionRunner.prototype.get_status = function(name) {
+    return (running[name] ? 'running' : 'stopped');
 }
 
 exports = module.exports = ApiExtensionRunner;
