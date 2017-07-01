@@ -28,15 +28,15 @@ function ApiExtensionRunner() {
  *
  * @param {String} name - The name of the extension according to its package.json file
  */
-ApiExtensionRunner.prototype.start = function(name, extension_root) {
+ApiExtensionRunner.prototype.start = function(name, cwd, module_dir) {
     let fork = require('child_process').fork;
     let options = {
-        cwd: extension_root + name,
+        cwd: cwd,
         stdio: [ 'ignore', 'ignore', 'ignore', 'ipc']
     };
 
     // Start node
-    running[name] = fork('.', [], options, (err, stdout, stderr) => {
+    running[name] = fork(module_dir, [], options, (err, stdout, stderr) => {
         if (err) {
             console.log(stdout);
         }

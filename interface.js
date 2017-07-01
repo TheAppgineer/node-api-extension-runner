@@ -26,7 +26,7 @@ function ApiExtensionRunner() {
  *
  * @param {String} name - The name of the extension according to its package.json file
  */
-ApiExtensionRunner.prototype.start = function(name, extension_root) {
+ApiExtensionRunner.prototype.start = function(name, cwd, module_dir) {
 }
 
 /**
