@@ -21,6 +21,7 @@ var running = {};
  * @class ApiExtensionRunner
  */
 function ApiExtensionRunner() {
+    // TODO: Start previously running extensions
 }
 
 /**
@@ -28,17 +29,33 @@ function ApiExtensionRunner() {
  *
  * @param {String} name - The name of the extension according to its package.json file
  */
-ApiExtensionRunner.prototype.start = function(name, cwd, module_dir) {
-    let fork = require('child_process').fork;
+ApiExtensionRunner.prototype.start = function(name, cwd, module_dir, inherit_mode, cb) {
+    let stdio;
+    let args = [];
+
+    if (inherit_mode == 'ignore') {
+        stdio = ['ignore', 'ignore', 'ignore', 'ipc'];
+    } else {
+        stdio = ['ignore', 'inherit', 'inherit', 'ipc'];
+
+        if (inherit_mode == 'inherit_all') {
+            args.push(inherit_mode);            // Pass option to child
+        }
+    }
+
     let options = {
         cwd: cwd,
-        stdio: [ 'ignore', 'ignore', 'ignore', 'ipc']
+        stdio: stdio
     };
 
     // Start node
-    running[name] = fork(module_dir, [], options, (err, stdout, stderr) => {
-        if (err) {
-            console.log(stdout);
+    let fork = require('child_process').fork;
+    running[name] = fork(module_dir, args, options);
+    running[name].on('exit', (code, signal) => {
+        delete running[name];
+
+        if (cb) {
+            cb(code);
         }
     });
 }
@@ -53,8 +70,9 @@ ApiExtensionRunner.prototype.stop = function(name) {
 
     if (node) {
         node.kill();
+    } else {
+        delete running[name];
     }
-    delete running[name];
 }
 
 /**
