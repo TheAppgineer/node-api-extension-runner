@@ -18,7 +18,7 @@
  * API Extension Runner Service
  * @class ApiExtensionRunner
  */
-function ApiExtensionRunner() {
+function ApiExtensionRunner(cb) {
 }
 
 /**
@@ -26,17 +26,24 @@ function ApiExtensionRunner() {
  *
  * @param {String} name - The name of the extension according to its package.json file
  */
-ApiExtensionRunner.prototype.start = function(name, cwd, module_dir) {
+ApiExtensionRunner.prototype.start = function(name, cwd, module_dir, inherit_mode, cb) {
 }
 
 /**
- * Stops an extension identified by name
+ * Stops (user request) an extension identified by name
  *
  * @param {String} name - The name of the extension according to its package.json file
  */
 ApiExtensionRunner.prototype.stop = function(name) {
 }
 
+/**
+ * Terminates (non-user request) an extension identified by name
+ *
+ * @param {String} name - The name of the extension according to its package.json file
+ */
+ApiExtensionRunner.prototype.terminate = function(name) {
+}
 
 /**
  * Returns the status of an extension identified by name
@@ -45,6 +52,12 @@ ApiExtensionRunner.prototype.stop = function(name) {
  * @returns {('stopped'|'running')} - The current status of the extension
  */
 ApiExtensionRunner.prototype.get_status = function(name) {
+}
+
+ApiExtensionRunner.prototype.prepare_exit = function(cb) {
+    if (cb) {
+        cb();
+    }
 }
 
 exports = module.exports = ApiExtensionRunner;

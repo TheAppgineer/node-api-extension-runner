@@ -20,8 +20,14 @@ var running = {};
  * API Extension Runner Service
  * @class ApiExtensionRunner
  */
-function ApiExtensionRunner() {
-    // TODO: Start previously running extensions
+function ApiExtensionRunner(cb) {
+    let fs = require('fs');
+
+    fs.readFile('running.json', 'utf8', function(err, data) {
+        if(!err && cb) {
+            cb(JSON.parse(data));
+        }
+    });
 }
 
 /**
@@ -52,8 +58,9 @@ ApiExtensionRunner.prototype.start = function(name, cwd, module_dir, inherit_mod
     let fork = require('child_process').fork;
     running[name] = fork(module_dir, args, options);
     running[name].on('exit', (code, signal) => {
-        delete running[name];
-
+        if (code) {
+            running[name] = null;   // Terminated
+        }
         if (cb) {
             cb(code);
         }
@@ -61,26 +68,21 @@ ApiExtensionRunner.prototype.start = function(name, cwd, module_dir, inherit_mod
 }
 
 /**
- * Stops an extension identified by name
+ * Stops (user request) an extension identified by name
  *
  * @param {String} name - The name of the extension according to its package.json file
  */
 ApiExtensionRunner.prototype.stop = function(name) {
-    let node = running[name];
-
-    if (node) {
-        node.kill();
-    } else {
-        delete running[name];
-    }
+    _terminate(name, true);
 }
 
 /**
- * Restarts an extension identified by name
+ * Terminates (non-user request) an extension identified by name
  *
  * @param {String} name - The name of the extension according to its package.json file
  */
-ApiExtensionRunner.prototype.restart = function(name) {
+ApiExtensionRunner.prototype.terminate = function(name) {
+    _terminate(name, false);
 }
 
 /**
@@ -90,7 +92,32 @@ ApiExtensionRunner.prototype.restart = function(name) {
  * @returns {('stopped'|'running')} - The current status of the extension
  */
 ApiExtensionRunner.prototype.get_status = function(name) {
-    return (running[name] ? 'running' : 'stopped');
+    const node = running[name];
+
+    return (node ? 'running' : (node === null ? 'terminated' : 'stopped'));
+}
+
+ApiExtensionRunner.prototype.prepare_exit = function(cb) {
+    let fs = require('fs');
+
+    fs.writeFile('running.json', JSON.stringify(Object.keys(running)), function(err) {
+        if (cb) {
+            cb();
+        }
+    });
+}
+
+function _terminate(name, user) {
+    let node = running[name];
+
+    if (node) {
+        node.kill();
+    }
+    if (user) {
+        delete running[name];
+    } else {
+        running[name] = null;
+    }
 }
 
 exports = module.exports = ApiExtensionRunner;
