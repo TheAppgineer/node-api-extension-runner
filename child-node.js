@@ -98,8 +98,13 @@ ApiExtensionRunner.prototype.get_status = function(name) {
 }
 
 ApiExtensionRunner.prototype.prepare_exit = function(cb) {
-    let fs = require('fs');
+    // Terminate running extensions
+    for (let name in running) {
+        _terminate(name, false);
+    }
 
+    // Write names of running extensions to file
+    let fs = require('fs');
     fs.writeFile('running.json', JSON.stringify(Object.keys(running)), function(err) {
         if (cb) {
             cb();
