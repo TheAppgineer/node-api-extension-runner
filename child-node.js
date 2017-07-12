@@ -44,9 +44,7 @@ ApiExtensionRunner.prototype.start = function(name, cwd, module_dir, inherit_mod
     } else {
         stdio = ['ignore', 'inherit', 'inherit', 'ipc'];
 
-        if (inherit_mode == 'inherit_all') {
-            args.push(inherit_mode);            // Pass option to child
-        }
+        args.push(inherit_mode);            // Pass option to child
     }
 
     let options = {
