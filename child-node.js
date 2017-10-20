@@ -194,7 +194,7 @@ function _terminate_all(cb) {
 function _terminate_child(name, user, cb) {
     const result = (running[name] && running[name].node ? true : false);
 
-    if (user && running[name].node === null) {
+    if (user && running[name] && running[name].node === null) {
         delete running[name].node;      // Stopped
     }
 
