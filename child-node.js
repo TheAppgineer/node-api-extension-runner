@@ -1,4 +1,4 @@
-// Copyright 2017 The Appgineer
+// Copyright 2017, 2018 The Appgineer
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,17 +15,16 @@
 "use strict";
 
 var running = {};
+var self;
 
 /**
  * API Extension Runner Service
  * @class ApiExtensionRunner
  */
-function ApiExtensionRunner(cb) {
-    process.on('SIGTERM', _terminate);
-    process.on('SIGINT', _terminate);
+function ApiExtensionRunner(name, cb) {
+    const fs = require('fs');
 
-    let fs = require('fs');
-    fs.readFile('running.json', 'utf8', function(err, data) {
+    fs.readFile('running.json', 'utf8', (err, data) => {
         if(!err && cb) {
             try {
                 cb(JSON.parse(data));
@@ -34,6 +33,15 @@ function ApiExtensionRunner(cb) {
             }
         }
     });
+
+    self = name;
+
+    // Register process pid to report running state
+    running[name] = {
+        node : {
+            pid: process.pid
+        }
+    }
 }
 
 /**
@@ -45,12 +53,10 @@ ApiExtensionRunner.prototype.start = function(name, cwd, module_dir, inherit_mod
     let stdio;
     let args = [];
 
-    if (inherit_mode == 'ignore') {
-        stdio = ['ignore', 'ignore', 'ignore', 'ipc'];
+    if (Number.isInteger(inherit_mode)) {
+        stdio = ['ignore', inherit_mode, inherit_mode, 'ipc'];
     } else {
-        stdio = ['ignore', 'inherit', 'inherit', 'ipc'];
-
-        args.push(inherit_mode);            // Pass option to child
+        stdio = ['ignore', 'ignore', 'ignore', 'ipc'];
     }
 
     let options = {
@@ -80,30 +86,8 @@ ApiExtensionRunner.prototype.start = function(name, cwd, module_dir, inherit_mod
         }
     });
     running[name] = {
-        cwd: cwd,
-        module_dir: module_dir,
-        inherit_mode: inherit_mode,
-        monitor_cb: cb,
         node: node
     };
-}
-
-/**
- * Restarts an extension identified by name
- *
- * @param {String} name - The name of the extension according to its package.json file
- */
-ApiExtensionRunner.prototype.restart = function(name, cb) {
-    _terminate_child(name, false, (code, signal) => {
-        const node = running[name];
-
-        ApiExtensionRunner.prototype.start.call(this, name, node.cwd, node.module_dir,
-                                                node.inherit_mode, node.monitor_cb);
-
-        if (cb) {
-            cb();
-        }
-    });
 }
 
 /**
@@ -128,7 +112,7 @@ ApiExtensionRunner.prototype.terminate = function(name, cb) {
  * Returns the status of an extension identified by name
  *
  * @param {String} name - The name of the extension according to its package.json file
- * @returns {('stopped'|'running')} - The current status of the extension
+ * @returns {('stopped'|'terminated'|'running')} - The status of the extension
  */
 ApiExtensionRunner.prototype.get_status = function(name) {
     let node = (running[name] ? running[name].node : undefined);
@@ -150,22 +134,16 @@ ApiExtensionRunner.prototype.get_status = function(name) {
 ApiExtensionRunner.prototype.prepare_exit = function(cb) {
     // Clean up data of stopped extensions
     for (let name in running) {
-        if (running[name].node === undefined) {
+        if (name == self || running[name].node === undefined) {
             delete running[name];
         }
     }
 
     // Write names of running extensions to file
-    let fs = require('fs');
-    fs.writeFile('running.json', JSON.stringify(Object.keys(running)), function(err) {
+    const fs = require('fs');
+    fs.writeFile('running.json', JSON.stringify(Object.keys(running)), (err) => {
         // Terminate running extensions
         _terminate_all(cb);
-    });
-}
-
-function _terminate() {
-    ApiExtensionRunner.prototype.prepare_exit.call(this, () => {
-        process.exit(0);
     });
 }
 

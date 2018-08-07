@@ -1,6 +1,6 @@
 {
     "name": "node-api-extension-runner",
-    "version": "0.2.2",
+    "version": "0.0.0",
     "description": "Node API providing a Roon extension runner interface and child node implementation",
     "main": "child-node.js",
     "author": "The Appgineer",
