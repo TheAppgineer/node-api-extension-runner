@@ -151,7 +151,7 @@ function _terminate_all(cb) {
     let pending = false;
 
     for (let name in running) {
-        pending = _terminate_child(name, false, () => {
+        pending |= _terminate_child(name, false, () => {
             for (let name in running) {
                 if (running[name] && running[name].timer) {
                     return;
@@ -170,14 +170,14 @@ function _terminate_all(cb) {
 }
 
 function _terminate_child(name, user, cb) {
-    const result = (running[name] && running[name].node ? true : false);
+    let result = (running[name] && running[name].node ? true : false);
 
     if (user && running[name] && running[name].node === null) {
         delete running[name].node;      // Stopped
     }
 
     if (result) {
-        let pid = running[name].node.pid;
+        let node = running[name].node;
 
         if (user) {
             delete running[name].node;  // Stopped
@@ -187,20 +187,36 @@ function _terminate_child(name, user, cb) {
 
         // Check if the process is still running
         try {
-            process.kill(pid, 0);
+            node.kill(0);
+
             running[name].user = user;
             running[name].terminate_cb = cb;
-            running[name].timer = setTimeout(process.kill, 5000, pid, 'SIGKILL');
+            running[name].timer = setTimeout(_kill_child, 5000, name, node);
 
-            process.kill(pid, 'SIGTERM');
+            node.kill('SIGTERM');
         } catch (e) {
-            console.error('Child process already terminated:', pid);
+            console.error('Child process already terminated:', node.pid);
+            result = false;
         }
-    } else if (cb) {
+    }
+
+    if (!result && cb) {
         cb();
     }
 
     return result;
+}
+
+function _kill_child(name, node) {
+    node.kill('SIGKILL');
+    console.error('Killing child', name, '(' + node.pid + ')...');
+
+    delete running[name].timer;
+
+    if (running[name].terminate_cb) {
+        running[name].terminate_cb(0, 'SIGKILL');
+        delete running[name].terminate_cb;
+    }
 }
 
 exports = module.exports = ApiExtensionRunner;
